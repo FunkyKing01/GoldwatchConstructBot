@@ -27,7 +27,7 @@ export function menuMessage(menu) {
 const text = (value, max) => String(value ?? '').trim().slice(0, max);
 
 /** Trims a dropdown from the web panel down to what Discord accepts: 25 options with unique labels. */
-export function cleanMenu({ name, prompt, placeholder, options }) {
+export function cleanMenu({ name, prompt, placeholder, options, ledger }) {
   const seen = new Set();
   const cleaned = [];
   for (const o of Array.isArray(options) ? options : []) {
@@ -44,5 +44,7 @@ export function cleanMenu({ name, prompt, placeholder, options }) {
     prompt: text(prompt, 300),
     placeholder: text(placeholder, 150) || 'Pick an option',
     options: cleaned.slice(0, 25),
+    // which Ledger column this dropdown's roles appear under: 'role', 'assignment' or 'none'
+    ledger: ['role', 'assignment', 'none'].includes(ledger) ? ledger : 'assignment',
   };
 }

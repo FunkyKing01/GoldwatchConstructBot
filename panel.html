@@ -149,6 +149,13 @@
       <label class="field">Placeholder inside the dropdown
         <input id="placeholder" maxlength="150">
       </label>
+      <label class="field">In the Ledger, the roles this dropdown gives appear under
+        <select id="menu-ledger">
+          <option value="assignment">Assignment</option>
+          <option value="role">Role</option>
+          <option value="none">Not shown in the Ledger</option>
+        </select>
+      </label>
       <div id="options"></div>
       <div class="actions">
         <button id="add" type="button">Add option</button>
@@ -362,6 +369,7 @@
     $('name').value = menu.name;
     $('prompt').value = menu.prompt;
     $('placeholder').value = menu.placeholder;
+    $('menu-ledger').value = menu.ledger ?? 'assignment';
     $('options').replaceChildren(...menu.options.map(optionRow));
     syncAdd();
   }
@@ -373,6 +381,7 @@
     name: $('name').value,
     prompt: $('prompt').value,
     placeholder: $('placeholder').value,
+    ledger: $('menu-ledger').value,
     options: [...$('options').children].map((row) =>
       Object.fromEntries([...row.querySelectorAll('[name]')].map((field) => [field.name, field.value]))),
   });
@@ -570,7 +579,7 @@
         ]),
         'Nobody to show yet.');
       $('ledger-summary').textContent = data.ledger.complete
-        ? `${number(data.ledger.rows.length)} members. Assignment is the role a dropdown gave them; Role is every other Discord role they have.`
+        ? `${number(data.ledger.rows.length)} members. Each dropdown chooses whether its roles appear under Role or Assignment (set on the Edit and Send tab).`
         : 'Showing only people who have used a dropdown or made a deposit. To list every member, switch on "Server Members Intent" for the bot in the Discord Developer Portal, then restart the bot.';
     }
 

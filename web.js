@@ -113,6 +113,7 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
       const menu = existing ? Object.assign(existing, cleaned) : { id: newId(), ...cleaned };
       if (!existing) state.menus.push(menu);
       save();
+      await bot.updateLedger();
       return { menu, updated: existing ? await bot.refreshPosted(menu) : 0 };
     },
 
@@ -120,6 +121,7 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
     'POST /api/menu/delete': async ({ id }) => {
       state.menus = state.menus.filter((menu) => menu.id !== id);
       save();
+      await bot.updateLedger();
       return { deleted: await bot.deletePosted(id) };
     },
 

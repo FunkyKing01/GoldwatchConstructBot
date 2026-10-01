@@ -114,14 +114,26 @@ const webBot = {
   refreshPosted,
   deletePosted,
   ledger: () => ledger,
+  updateLedger: () => updateLedger(),
 };
 
-// The Ledger tab: every member with their Discord roles, split into "assignment" roles (the ones a
-// dropdown hands out) and all their other roles. `complete` is false when Discord won't list everyone.
+// The Ledger tab: every member with a Role and an Assignment column. Each dropdown says which column
+// its roles belong in. If no dropdown is marked as a source of roles, the Role column shows all of a
+// member's other Discord roles. `complete` is false when Discord won't list everyone.
 let ledger = { rows: [], complete: true };
 
 async function refreshLedger() {
-  const assignmentIds = new Set(state.menus.flatMap((menu) => menu.options.map((o) => o.roleId)).filter(Boolean));
+  const idsFor = (column) =>
+    new Set(
+      state.menus
+        .filter((menu) => (menu.ledger ?? 'assignment') === column)
+        .flatMap((menu) => menu.options.map((o) => o.roleId))
+        .filter(Boolean),
+    );
+  const assignmentIds = idsFor('assignment');
+  const roleIds = idsFor('role');
+  const hasRoleDropdown = state.menus.some((menu) => menu.ledger === 'role');
+  const inRoleColumn = (role) => (hasRoleDropdown ? roleIds.has(role.id) : !assignmentIds.has(role.id));
   const rows = [];
   let complete = true;
   for (const guild of client.guilds.cache.values()) {
@@ -147,7 +159,7 @@ async function refreshLedger() {
       rows.push({
         name: member.displayName,
         username: member.user.username,
-        roles: roles.filter((role) => !assignmentIds.has(role.id)).map((role) => role.name),
+        roles: roles.filter(inRoleColumn).map((role) => role.name),
         assignments: roles.filter((role) => assignmentIds.has(role.id)).map((role) => role.name),
       });
     }
