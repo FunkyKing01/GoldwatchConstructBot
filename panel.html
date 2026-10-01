@@ -270,7 +270,15 @@
       headers: post ? { 'Content-Type': 'application/json' } : {},
       body: post ? JSON.stringify(body ?? {}) : undefined,
     });
-    const data = await res.json().catch(() => ({}));
+    const text = await res.text().catch((err) => `(${err.message})`);
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      // Not the bot's own answer: say what came back, so the cause can be found.
+      const type = res.headers.get('content-type') ?? 'no type';
+      throw new Error(`Unexpected reply from ${path}: status ${res.status}, ${type}, ${text.length} characters, starts "${text.slice(0, 80)}"`);
+    }
     if (res.status === 401 && path !== '/api/login') show(false);
     if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
     return data;
@@ -575,7 +583,10 @@
         const detail = `version ${BUILD}, line ${line ?? '?'}, received: ${Object.keys(data).join(' ')}`;
         note(`Couldn't show the panel: ${err.message} (${detail})`, 'error');
       }
-    }, () => {});
+    }, (err) => {
+      // Being signed out is normal and shows the sign-in form; anything else is worth reporting.
+      if (err.message !== 'Sign in first.') note(`Couldn't load the panel: ${err.message}`, 'error');
+    });
 
   $('login-form').onsubmit = (event) => {
     event.preventDefault();

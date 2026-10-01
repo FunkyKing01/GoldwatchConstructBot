@@ -32,7 +32,7 @@ async function readJson(req) {
  */
 export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, viewPassword }) {
   // Read once, so the page always matches the code this copy of the bot is running.
-  // uild identifies this version of the page, so a browser tab left open across an update can reload itself.
+  // 'build' identifies this version of the page, so a browser tab left open across an update can reload itself.
   const source = readFileSync(PAGE, 'utf8');
   const build = createHash('sha256').update(source).digest('hex').slice(0, 12);
   const page = source.replace('__BUILD__', build);
