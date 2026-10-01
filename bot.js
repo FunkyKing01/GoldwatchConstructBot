@@ -75,7 +75,12 @@ client.once(Events.ClientReady, async () => {
   const host = hostedPort ? '0.0.0.0' : PANEL_HOST || '127.0.0.1';
   const localOnly = host === '127.0.0.1' || host === 'localhost';
   const password = PANEL_PASSWORD || (localOnly ? '' : randomBytes(9).toString('base64url'));
-  startPanel(webBot, { host, port: hostedPort || Number(PANEL_PORT) || 3000, password });
+  startPanel(webBot, {
+    host,
+    port: hostedPort || Number(PANEL_PORT) || 3000,
+    password,
+    viewPassword: process.env.PANEL_VIEW_PASSWORD || '',
+  });
   if (!PANEL_PASSWORD && password) {
     console.log(`Panel password for this run: ${password}  (set PANEL_PASSWORD in .env to choose your own)`);
   }

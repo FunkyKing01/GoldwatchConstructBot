@@ -16,7 +16,8 @@ Button names on their site may differ slightly from the ones here.
 3. Open **Files**, upload `dropdown-bot-upload.zip`, then unzip it there (right-click or the menu next to the file → Unarchive / Extract). The files should end up at the top level, not inside a subfolder.
 4. Still in **Files**, open the file named `.env` and fill in the two lines, then save:
    - `DISCORD_TOKEN=` your bot token
-   - `PANEL_PASSWORD=` the website password you chose
+   - `PANEL_PASSWORD=` the full-access website password you chose
+   - `PANEL_VIEW_PASSWORD=` optional: a second password that only shows Receipts and Totals
 5. Open **Startup** and set the start command / main file to `index.js` (the command is `node index.js`). If there is an option to install packages from `package.json`, leave it on.
 6. Open **Console** and press **Start**. After the packages install you should see:
    - `Logged in as Goldwatch Construct#5303`

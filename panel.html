@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bot control panel</title>
+<title>Goldwatch Construct</title>
 <style>
   :root {
     --bg: #f2f3f5; --card: #ffffff; --text: #1e1f22; --muted: #5c5f66; --line: #d4d7dc;
@@ -77,7 +77,7 @@
 <body>
 <main>
   <header>
-    <h1>Bot control panel</h1>
+    <h1 id="title">Goldwatch Construct</h1>
     <div id="who" class="actions" hidden>
       <span id="tag" class="muted"></span>
       <button id="logout" type="button">Sign out</button>
@@ -86,7 +86,7 @@
 
   <section id="login" hidden>
     <h2>Sign in</h2>
-    <p class="muted">Use the panel password from your .env file, or the one the bot printed when it started.</p>
+    <p class="muted">Enter the password you were given.</p>
     <form id="login-form">
       <label class="field">Password
         <input id="password" type="password" autocomplete="current-password" required>
@@ -217,6 +217,7 @@
   }
 
   function show(signedIn) {
+    if (!signedIn) document.title = $('title').textContent = 'Goldwatch Construct';
     $('login').hidden = signedIn;
     $('panel').hidden = !signedIn;
     $('who').hidden = !signedIn;
@@ -357,7 +358,22 @@
 
   function render(data) {
     $('tag').textContent = data.tag;
-    $('logout').hidden = data.open;
+    $('logout').hidden = Boolean(data.open);
+
+    // The view-only password shows just Receipts and Totals; the full password shows every tab.
+    const viewer = data.role === 'viewer';
+    const title = viewer ? 'Goldwatch Construct Receipts & Totals' : 'Goldwatch Construct Control Panel';
+    document.title = title;
+    $('title').textContent = title;
+    const allowed = (name) => !viewer || name === 'receipts' || name === 'totals';
+    for (const tab of document.querySelectorAll('.tabs button')) tab.hidden = !allowed(tab.dataset.tab);
+    const current = document.querySelector('.tabs button[aria-selected="true"]')?.dataset.tab;
+    if (!allowed(current)) showTab('receipts');
+    if (viewer) {
+      renderDeposits(data);
+      show(true);
+      return;
+    }
     guilds = data.guilds;
 
     let last = null;

@@ -30,13 +30,16 @@ async function readJson(req) {
  * Serves the web control panel. `bot` is the small set of things the panel may do
  * with Discord: info(), setStatus(presence), send(channelId, payload), refreshPosted(menu) and deletePosted(menuId).
  */
-export function startPanel(bot, { host = '127.0.0.1', port = 3000, password }) {
+export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, viewPassword }) {
   // Read once, so the page always matches the code this copy of the bot is running.
   const page = readFileSync(PAGE);
   // With no password the panel is open, which is only allowed for this computer (see the Host check below).
   const open = !password;
   const secret = digest(password);
-  const sessions = new Set();
+  // An optional second password that only lets people look at Receipts and Totals.
+  const viewSecret = viewPassword ? digest(viewPassword) : null;
+  // session id -> 'admin' or 'viewer'
+  const sessions = new Map();
 
   const deliver = async (channelId, payload) => {
     try {
@@ -49,6 +52,7 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password }) {
   const api = {
     'GET /api/state': () => ({
       ...bot.info(),
+      role: 'admin',
       open,
       presence: state.presence,
       menus: state.menus,
@@ -161,12 +165,16 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password }) {
 
       if (route === 'POST /api/login') {
         const { password: attempt } = await readJson(req);
-        if (!timingSafeEqual(digest(attempt), secret)) {
+        const given = digest(attempt);
+        const role = timingSafeEqual(given, secret)
+          ? 'admin'
+          : viewSecret && timingSafeEqual(given, viewSecret) ? 'viewer' : null;
+        if (!role) {
           await sleep(1000); // slows down guessing
           return json(401, { error: 'Wrong password.' });
         }
         const id = randomBytes(32).toString('hex');
-        sessions.add(id);
+        sessions.set(id, role);
         // SameSite=Strict keeps other websites from using this session.
         return json(200, { ok: true }, { 'Set-Cookie': `session=${id}; HttpOnly; SameSite=Strict; Path=/` });
       }
@@ -177,6 +185,14 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password }) {
       if (route === 'POST /api/logout') {
         sessions.delete(session);
         return json(200, { ok: true }, { 'Set-Cookie': 'session=; Max-Age=0; Path=/' });
+      }
+
+      const role = open ? 'admin' : sessions.get(session);
+      if (role === 'viewer') {
+        // The view-only password gets the receipts and totals and nothing else.
+        if (route !== 'GET /api/state') return json(403, { error: 'This password can only view receipts and totals.' });
+        const { tag } = bot.info();
+        return json(200, { role, tag, receipts: state.receipts.slice(-1000).reverse(), totals: depositTotals() });
       }
 
       if (!Object.hasOwn(api, route)) return json(404, { error: 'Not found.' });
