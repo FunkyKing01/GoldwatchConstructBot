@@ -277,7 +277,10 @@
     } catch {
       // Not the bot's own answer: say what came back, so the cause can be found.
       const type = res.headers.get('content-type') ?? 'no type';
-      throw new Error(`Unexpected reply from ${path}: status ${res.status}, ${type}, ${text.length} characters, starts "${text.slice(0, 80)}"`);
+      // When a web page comes back instead, its title and first words usually say who sent it.
+      const doc = new DOMParser().parseFromString(text, 'text/html');
+      const words = (doc.body?.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 200);
+      throw new Error(`Unexpected reply from ${path}: status ${res.status}, ${type}, ${text.length} characters, titled "${doc.title}", says "${words}"`);
     }
     if (res.status === 401 && path !== '/api/login') show(false);
     if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
