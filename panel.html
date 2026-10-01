@@ -6,7 +6,7 @@
 <title>Goldwatch Construct</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230d0b06'/%3E%3Cpath fill='%23e0b43a' d='M12 62 L33 58 C37 52 41 46 45 42 L40 16 L47 30 L50 11 L55 28 L60 9 L63 27 L69 15 L69 36 C71 41 73 44 77 45 C80 42 85 42 88 45 L96 48 L88 51 C84 57 76 61 66 63 L54 66 L47 81 L44 80 L48 66 L42 66 L34 79 L31 78 L36 65 C27 65 19 65 12 62 Z'/%3E%3C/svg%3E">
 <style>
-  /* Black panels on a gold page, with gold accents. --bg is the dark fill inside fields. */
+  /* Black panels on a dusky Riften-banner purple page, with gold accents. --bg is the dark fill inside fields. */
   :root {
     --bg: #0d0b06; --card: #17130a; --text: #f7edd2; --muted: #c8b684; --line: #5b4a1c;
     --accent: #e0b43a; --accent-text: #1a1405; --danger: #ff9d8c; --ok: #9fe3ac;
@@ -16,14 +16,14 @@
   * { box-sizing: border-box; }
   body {
     margin: 0; padding: 24px 16px 96px; color: var(--text); min-height: 100vh;
-    background: #b8891f linear-gradient(135deg, #8a6510 0%, #e8c75a 30%, #b98a1c 55%, #f3da7e 78%, #9a7214 100%) fixed;
+    background: #3b2e4c linear-gradient(135deg, #261d33 0%, #43345a 45%, #54426c 70%, #2c2239 100%) fixed;
     font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   main { max-width: 720px; margin: 0 auto; display: grid; gap: 16px; }
   header {
     display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
     background: var(--card); border: 1px solid var(--accent); border-radius: 12px; padding: 14px 16px;
-    box-shadow: 0 6px 20px rgba(40, 28, 0, 0.35);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
   }
   .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
   .brand svg { width: 52px; height: 52px; flex: none; }
@@ -36,7 +36,7 @@
   header .muted { margin: 0; }
   section {
     background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px;
-    box-shadow: 0 6px 20px rgba(40, 28, 0, 0.35);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
   }
   label.field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
   input, select, textarea, button { font: inherit; color: var(--text); }
@@ -54,7 +54,7 @@
   .tabs {
     display: flex; gap: 4px; flex-wrap: wrap; padding: 4px 8px 0;
     background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(40, 28, 0, 0.35);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
   }
   .tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; color: var(--muted); }
   .tabs button[aria-selected="true"] { border-bottom-color: var(--accent); color: var(--text); font-weight: 600; }
