@@ -242,7 +242,7 @@
     $('note').className = kind;
     $('note').hidden = false;
     clearTimeout(noteTimer);
-    noteTimer = setTimeout(() => ($('note').hidden = true), 5000);
+    noteTimer = setTimeout(() => ($('note').hidden = true), kind === 'error' ? 60000 : 5000);
   }
 
   function show(signedIn) {
@@ -394,7 +394,9 @@
       let tried = null;
       try { tried = sessionStorage.getItem('reloaded-for'); sessionStorage.setItem('reloaded-for', data.build); } catch {}
       if (tried !== data.build) return location.reload();
-    }    $('tag').textContent = data.tag;
+    }
+
+    $('tag').textContent = data.tag;
     $('logout').hidden = Boolean(data.open);
 
     // The view-only password shows just Receipts and Totals; the full password shows every tab.
@@ -540,8 +542,17 @@
     } catch {}
   }, 5000);
 
+  // If the page can't draw what the bot sent, say exactly where it failed and what arrived, so it can be fixed.
   const load = () =>
-    api('GET', '/api/state').then(render, () => {}).catch((err) => note(`Couldn't show the panel: ${err.message}`, 'error'));
+    api('GET', '/api/state').then((data) => {
+      try {
+        render(data);
+      } catch (err) {
+        const line = /:(\d+):\d+\)?\s*$/.exec(String(err.stack).split('\n')[1] ?? '')?.[1];
+        const detail = `version ${BUILD}, line ${line ?? '?'}, received: ${Object.keys(data).join(' ')}`;
+        note(`Couldn't show the panel: ${err.message} (${detail})`, 'error');
+      }
+    }, () => {});
 
   $('login-form').onsubmit = (event) => {
     event.preventDefault();
