@@ -189,8 +189,9 @@
       <label class="field">Who can use /deposit
         <select id="deposit-role"></select>
       </label>
-      <p class="muted" style="margin-bottom: 4px;">Roles that can use /retrieve (people who can manage the server always can)</p>
-      <div id="retrieve-roles" style="margin-bottom: 12px;"></div>
+      <label class="field">Who can use /retrieve
+        <select id="retrieve-role"></select>
+      </label>
       <button id="save-deposit" class="primary" type="button">Save deposit and retrieval setup</button>
 
       <h2 style="margin-top: 24px;">Moderators</h2>
@@ -461,7 +462,14 @@
       }
     };
     roleBoxes('records-roles', records.roleIds);
-    roleBoxes('retrieve-roles', data.deposit.retrieveRoleIds ?? []);
+    const retrieveRole = (data.deposit.retrieveRoleIds ?? [])[0] ?? '';
+    $('retrieve-role').replaceChildren(
+      el('option', { value: '', textContent: 'Only people who can manage the server' }),
+      ...data.guilds.map((guild) =>
+        el('optgroup', { label: guild.name }, ...(guild.roles ?? []).map((r) =>
+          el('option', { value: r.id, textContent: `Only people with @${r.name}`, selected: r.id === retrieveRole }))),
+      ),
+    );
 
     renderDeposits(data);
 
@@ -563,7 +571,7 @@
         retrievalReply: $('retrieval-reply').value,
         channelId: $('deposit-channel').value,
         roleId: $('deposit-role').value,
-        retrieveRoleIds: [...$('retrieve-roles').querySelectorAll('input:checked')].map((box) => box.value),
+        retrieveRoleIds: $('retrieve-role').value ? [$('retrieve-role').value] : [],
       });
       $('deposit-items').value = deposit.items.join('\n');
       return deposit;
