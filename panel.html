@@ -385,8 +385,16 @@
     if (!menus.length) $('library').append(el('p', { className: 'muted', textContent: 'No dropdowns saved yet.' }));
   }
 
+  // Filled in by the bot when it serves the page.
+  const BUILD = '__BUILD__';
+
   function render(data) {
-    $('tag').textContent = data.tag;
+    // The bot was updated while this tab was open: load the new page once instead of showing a broken one.
+    if (data.build && data.build !== BUILD) {
+      let tried = null;
+      try { tried = sessionStorage.getItem('reloaded-for'); sessionStorage.setItem('reloaded-for', data.build); } catch {}
+      if (tried !== data.build) return location.reload();
+    }    $('tag').textContent = data.tag;
     $('logout').hidden = Boolean(data.open);
 
     // The view-only password shows just Receipts and Totals; the full password shows every tab.

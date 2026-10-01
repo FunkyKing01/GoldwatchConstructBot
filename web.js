@@ -32,7 +32,10 @@ async function readJson(req) {
  */
 export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, viewPassword }) {
   // Read once, so the page always matches the code this copy of the bot is running.
-  const page = readFileSync(PAGE);
+  // uild identifies this version of the page, so a browser tab left open across an update can reload itself.
+  const source = readFileSync(PAGE, 'utf8');
+  const build = createHash('sha256').update(source).digest('hex').slice(0, 12);
+  const page = source.replace('__BUILD__', build);
   // With no password the panel is open, which is only allowed for this computer (see the Host check below).
   const open = !password;
   const secret = digest(password);
@@ -53,6 +56,7 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
     'GET /api/state': () => ({
       ...bot.info(),
       role: 'admin',
+      build,
       open,
       presence: state.presence,
       menus: state.menus,
@@ -193,7 +197,7 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
         // The view-only password gets the receipts and totals and nothing else.
         if (route !== 'GET /api/state') return json(403, { error: 'This password can only view receipts and totals.' });
         const { tag } = bot.info();
-        return json(200, { role, tag, receipts: state.receipts.slice(-1000).reverse(), totals: depositTotals() });
+        return json(200, { role, build, tag, receipts: state.receipts.slice(-1000).reverse(), totals: depositTotals() });
       }
 
       if (!Object.hasOwn(api, route)) return json(404, { error: 'Not found.' });
