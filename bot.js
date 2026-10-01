@@ -64,6 +64,8 @@ client.once(Events.ClientReady, async () => {
   await client.application.commands.set([]);
   for (const guild of client.guilds.cache.values()) await guild.commands.set(commands);
   client.user.setStatus(state.presence);
+  await updateLedger();
+  setInterval(updateLedger, 30000);
 
   console.log(`Logged in as ${client.user.tag}`);
   console.log(
@@ -111,7 +113,50 @@ const webBot = {
   },
   refreshPosted,
   deletePosted,
+  ledger: () => ledger,
 };
+
+// The Ledger tab: every member with their Discord roles, split into "assignment" roles (the ones a
+// dropdown hands out) and all their other roles. `complete` is false when Discord won't list everyone.
+let ledger = { rows: [], complete: true };
+
+async function refreshLedger() {
+  const assignmentIds = new Set(state.menus.flatMap((menu) => menu.options.map((o) => o.roleId)).filter(Boolean));
+  const rows = [];
+  let complete = true;
+  for (const guild of client.guilds.cache.values()) {
+    let members;
+    try {
+      members = [...(await guild.members.list({ limit: 1000 })).values()];
+    } catch {
+      // Listing everyone needs "Server Members Intent" switched on for the bot in the Developer Portal.
+      // Without it, look up just the people the bot already knows: dropdown users and depositors.
+      complete = false;
+      const known = new Set([...Object.values(state.assigned).flat(), ...state.receipts.map((r) => r.userId)]);
+      members = [];
+      for (const id of [...known].slice(0, 100)) {
+        const member = await guild.members.fetch({ user: id, force: true }).catch(() => null);
+        if (member) members.push(member);
+      }
+    }
+    for (const member of members) {
+      if (member.user.bot) continue;
+      const roles = [...member.roles.cache.values()]
+        .filter((role) => role.id !== guild.id)
+        .sort((a, b) => b.position - a.position);
+      rows.push({
+        name: member.displayName,
+        username: member.user.username,
+        roles: roles.filter((role) => !assignmentIds.has(role.id)).map((role) => role.name),
+        assignments: roles.filter((role) => assignmentIds.has(role.id)).map((role) => role.name),
+      });
+    }
+  }
+  rows.sort((a, b) => a.name.localeCompare(b.name));
+  ledger = { rows, complete };
+}
+
+const updateLedger = () => refreshLedger().catch((err) => console.error(`Couldn't refresh the ledger: ${err.message}`));
 
 client.on(Events.GuildCreate, (guild) => guild.commands.set(commands).catch(console.error));
 
@@ -292,6 +337,7 @@ async function onPick(i) {
     });
   }
   save();
+  updateLedger();
   // Refresh the spot counts; the message text stays as it was posted.
   await i.editReply({ components: menuMessage(menu).components });
   return i.followUp({

@@ -28,7 +28,7 @@ async function readJson(req) {
 
 /**
  * Serves the web control panel. `bot` is the small set of things the panel may do
- * with Discord: info(), setStatus(presence), send(channelId, payload), refreshPosted(menu) and deletePosted(menuId).
+ * with Discord: info(), setStatus(presence), send(channelId, payload), refreshPosted(menu), deletePosted(menuId) and ledger().
  */
 export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, viewPassword }) {
   // Read once, so the page always matches the code this copy of the bot is running.
@@ -66,6 +66,7 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
       receipts: state.receipts.slice(-1000).reverse(),
       totals: depositTotals(),
       logins: state.logins.slice(-500).reverse(),
+      ledger: bot.ledger(),
     }),
 
     'POST /api/deposit': ({ items, reply, retrievalReply, channelId, roleId, retrieveRoleIds }) => {
@@ -203,7 +204,14 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
         // The view-only password gets the receipts and totals and nothing else.
         if (route !== 'GET /api/state') return json(403, { error: 'This password can only view receipts and totals.' });
         const { tag } = bot.info();
-        return json(200, { role, build, tag, receipts: state.receipts.slice(-1000).reverse(), totals: depositTotals() });
+        return json(200, {
+          role,
+          build,
+          tag,
+          receipts: state.receipts.slice(-1000).reverse(),
+          totals: depositTotals(),
+          ledger: bot.ledger(),
+        });
       }
 
       if (!Object.hasOwn(api, route)) return json(404, { error: 'Not found.' });

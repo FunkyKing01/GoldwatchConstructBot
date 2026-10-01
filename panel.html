@@ -131,6 +131,7 @@
       <button type="button" role="tab" data-tab="edit">Edit and Send</button>
       <button type="button" role="tab" data-tab="receipts">Receipts</button>
       <button type="button" role="tab" data-tab="totals">Totals</button>
+      <button type="button" role="tab" data-tab="ledger">Ledger</button>
       <button type="button" role="tab" data-tab="moderation">Moderation</button>
       <button type="button" role="tab" data-tab="logins">Logging in</button>
       <button type="button" role="tab" data-tab="status">Bot status</button>
@@ -220,6 +221,13 @@
       <p class="muted">What is left of each item: everything deposited minus everything retrieved.</p>
       <div class="scroll"><table id="totals"></table></div>
       <p class="muted">Updates by itself every few seconds.</p>
+    </section>
+
+    <section data-tab="ledger">
+      <h2>Ledger</h2>
+      <p class="muted" id="ledger-summary"></p>
+      <div class="scroll"><table id="ledger"></table></div>
+      <p class="muted">Updates by itself; role changes in Discord show up within about half a minute.</p>
     </section>
 
     <section data-tab="logins">
@@ -427,7 +435,7 @@
     const title = viewer ? 'Goldwatch Construct Receipts & Totals' : 'Goldwatch Construct Control Panel';
     document.title = title;
     $('title').textContent = title;
-    const allowed = (name) => !viewer || name === 'receipts' || name === 'totals';
+    const allowed = (name) => !viewer || name === 'receipts' || name === 'totals' || name === 'ledger';
     for (const tab of document.querySelectorAll('.tabs button')) tab.hidden = !allowed(tab.dataset.tab);
     const current = document.querySelector('.tabs button[aria-selected="true"]')?.dataset.tab;
     if (!allowed(current)) showTab('receipts');
@@ -553,6 +561,18 @@
     table('totals', ['Item', 'Total amount', 'Deposited', 'Retrieved'], [1, 2, 3],
       data.totals.map((t) => [t.item, number(t.quantity), number(t.deposited), number(t.retrieved)]),
       'Nothing yet.');
+
+    if (data.ledger) {
+      const list = (names) => names.join(', ') || '—';
+      table('ledger', ['Name', 'Role', 'Assignment'], [],
+        data.ledger.rows.map((row) => [
+          row.name === row.username ? row.name : `${row.name} (${row.username})`, list(row.roles), list(row.assignments),
+        ]),
+        'Nobody to show yet.');
+      $('ledger-summary').textContent = data.ledger.complete
+        ? `${number(data.ledger.rows.length)} members. Assignment is the role a dropdown gave them; Role is every other Discord role they have.`
+        : 'Showing only people who have used a dropdown or made a deposit. To list every member, switch on "Server Members Intent" for the bot in the Discord Developer Portal, then restart the bot.';
+    }
 
     // Sign-in attempts are only sent to people with the full password.
     if (data.logins) {
