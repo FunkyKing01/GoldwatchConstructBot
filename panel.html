@@ -501,7 +501,7 @@
         : [r.name, 'Deposit', r.item, `+${number(r.quantity)}`, when(r.at)]),
       'Nothing yet.');
     $('receipts-summary').textContent = data.receipts.length
-      ? `${number(data.receipts.length)} most recent deposits and retrievals, newest first.`
+      ? `${number(data.receipts.length)} most recent deposits and retrievals, newest first. Time & date is adjusted to those viewing this currently.`
       : 'Each completed /deposit and /retrieve shows up here.';
     table('totals', ['Item', 'Total amount', 'Deposited', 'Retrieved'], [1, 2, 3],
       data.totals.map((t) => [t.item, number(t.quantity), number(t.deposited), number(t.retrieved)]),
