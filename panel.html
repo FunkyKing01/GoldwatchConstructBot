@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bot control panel</title>
+<style>
+  :root {
+    --bg: #f2f3f5; --card: #ffffff; --text: #1e1f22; --muted: #5c5f66; --line: #d4d7dc;
+    --accent: #5865f2; --accent-text: #ffffff; --danger: #b3261e; --ok: #1a7f45;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1f22; --card: #2b2d31; --text: #f2f3f5; --muted: #a9acb3; --line: #41434a;
+      --danger: #ff8a80; --ok: #6ddc9a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 96px; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 720px; margin: 0 auto; display: grid; gap: 16px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 22px; margin: 0; }
+  h2 { font-size: 16px; margin: 0 0 4px; }
+  .muted { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  label.field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+  input, select, textarea, button { font: inherit; color: var(--text); }
+  input, select, textarea {
+    width: 100%; padding: 8px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+  }
+  textarea { min-height: 84px; resize: vertical; }
+  button {
+    padding: 8px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+  .tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; color: var(--muted); }
+  .tabs button[aria-selected="true"] { border-bottom-color: var(--accent); color: var(--text); font-weight: 600; }
+  .choice { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; cursor: pointer; }
+  .choice input { width: auto; margin-top: 5px; }
+  .choice span { display: block; color: var(--muted); font-size: 13px; }
+  .opt {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+    margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
+  }
+  .opt button { justify-self: start; }
+  @media (max-width: 600px) {
+    .opt { grid-template-columns: 1fr; }
+  }
+  #note {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: calc(100% - 32px);
+    padding: 10px 16px; border-radius: 8px; background: var(--card); border: 1px solid var(--line);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
+  .card {
+    display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+    padding: 12px 0; border-bottom: 1px solid var(--line);
+  }
+  .card span { display: block; margin: 0; }
+  #library { margin-bottom: 16px; }
+  .scroll { overflow-x: auto; margin-bottom: 16px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-size: 13px; font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  #note.ok { border-color: var(--ok); color: var(--ok); }
+  #note.error { border-color: var(--danger); color: var(--danger); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Bot control panel</h1>
+    <div id="who" class="actions" hidden>
+      <span id="tag" class="muted"></span>
+      <button id="logout" type="button">Sign out</button>
+    </div>
+  </header>
+
+  <section id="login" hidden>
+    <h2>Sign in</h2>
+    <p class="muted">Use the panel password from your .env file, or the one the bot printed when it started.</p>
+    <form id="login-form">
+      <label class="field">Password
+        <input id="password" type="password" autocomplete="current-password" required>
+      </label>
+      <button class="primary" type="submit">Sign in</button>
+    </form>
+  </section>
+
+  <div id="panel" hidden style="display: grid; gap: 16px;">
+    <nav class="tabs" role="tablist">
+      <button type="button" role="tab" data-tab="library">My Dropdowns</button>
+      <button type="button" role="tab" data-tab="edit">Edit and Send</button>
+      <button type="button" role="tab" data-tab="receipts">Receipts</button>
+      <button type="button" role="tab" data-tab="totals">Totals</button>
+      <button type="button" role="tab" data-tab="moderation">Moderation</button>
+      <button type="button" role="tab" data-tab="status">Bot status</button>
+    </nav>
+
+    <section data-tab="edit">
+      <h2 id="editing">Dropdown</h2>
+      <p class="muted">An option can give a role to whoever picks it, up to a maximum number of people; picking it again gives the role back. Saving also updates copies of this dropdown already posted in Discord.</p>
+      <label class="field">Name (only you see this)
+        <input id="name" maxlength="80">
+      </label>
+      <label class="field">Saved message above the dropdown
+        <input id="prompt" maxlength="300">
+      </label>
+      <label class="field">Placeholder inside the dropdown
+        <input id="placeholder" maxlength="150">
+      </label>
+      <div id="options"></div>
+      <div class="actions">
+        <button id="add" type="button">Add option</button>
+        <button id="save-menu" class="primary" type="button">Save dropdown</button>
+      </div>
+
+      <h2 style="margin-top: 24px;">Send to Discord</h2>
+      <p class="muted" id="no-guilds" hidden>The bot isn't in a server yet. Open the invite link it printed when it started.</p>
+      <label class="field">Channel
+        <select id="channel"></select>
+      </label>
+      <label class="field">Message (leave empty to send the dropdown with its saved message)
+        <textarea id="say-text" maxlength="2000"></textarea>
+      </label>
+      <div class="actions">
+        <button id="post" class="primary" type="button">Save and send dropdown</button>
+        <button id="say" type="button">Send message only</button>
+      </div>
+    </section>
+
+    <section data-tab="library">
+      <h2>My Dropdowns</h2>
+      <p class="muted">Every dropdown you save is kept here. Open one to edit or send it.</p>
+      <div id="library"></div>
+      <button id="new-menu" class="primary" type="button">New dropdown</button>
+    </section>
+
+    <section data-tab="moderation">
+      <h2>Deposit and Retrieval</h2>
+      <p class="muted">People type <strong>/deposit</strong> in Discord, pick an item from this list and enter a quantity. Moderators type <strong>/retrieve</strong> the same way to take items out, which subtracts from the totals.</p>
+      <label class="field">Items, one per line
+        <textarea id="deposit-items" style="min-height: 160px;"></textarea>
+      </label>
+      <label class="field">Message the depositor sees. You can use {user}, {item} and {quantity}.
+        <textarea id="deposit-reply" maxlength="1500"></textarea>
+      </label>
+      <label class="field">Message the person retrieving sees. You can use {user}, {item} and {quantity}.
+        <textarea id="retrieval-reply" maxlength="1500"></textarea>
+      </label>
+      <label class="field">Channel that deposit and retrieval receipts are posted in
+        <select id="deposit-channel"></select>
+      </label>
+      <label class="field">Who can use /deposit
+        <select id="deposit-role"></select>
+      </label>
+      <p class="muted">Who can use /retrieve is set under Moderators below.</p>
+      <button id="save-deposit" class="primary" type="button">Save deposit and retrieval setup</button>
+
+      <h2 style="margin-top: 24px;">Moderators</h2>
+      <p class="muted">Moderators can use <strong>/retrieve</strong> (take items out) and <strong>/records</strong> (see every item and its total, shown only to them). People who can manage the server are always moderators.</p>
+      <p class="muted" style="margin-bottom: 4px;">Moderator roles</p>
+      <div id="records-roles" style="margin-bottom: 12px;"></div>
+      <label class="field">Channel that is told when someone prints the records
+        <select id="records-channel"></select>
+      </label>
+      <button id="save-records" class="primary" type="button">Save moderation setup</button>
+    </section>
+
+    <section data-tab="receipts">
+      <h2>Receipts</h2>
+      <p class="muted" id="receipts-summary"></p>
+      <div class="scroll"><table id="receipts"></table></div>
+      <p class="muted">Updates by itself every few seconds.</p>
+    </section>
+
+    <section data-tab="totals">
+      <h2>Totals</h2>
+      <p class="muted">What is left of each item: everything deposited minus everything retrieved.</p>
+      <div class="scroll"><table id="totals"></table></div>
+      <p class="muted">Updates by itself every few seconds.</p>
+    </section>
+
+    <section data-tab="status">
+      <h2>Bot status</h2>
+      <label class="field">Shown next to the bot's name
+        <select id="presence"></select>
+      </label>
+    </section>
+  </div>
+</main>
+<div id="note" role="status" hidden></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, props = {}, ...children) => {
+    const node = Object.assign(document.createElement(tag), props);
+    node.append(...children);
+    return node;
+  };
+
+  let noteTimer;
+  function note(message, kind = 'ok') {
+    $('note').textContent = message;
+    $('note').className = kind;
+    $('note').hidden = false;
+    clearTimeout(noteTimer);
+    noteTimer = setTimeout(() => ($('note').hidden = true), 5000);
+  }
+
+  function show(signedIn) {
+    $('login').hidden = signedIn;
+    $('panel').hidden = !signedIn;
+    $('who').hidden = !signedIn;
+  }
+
+  async function api(method, path, body) {
+    const post = method === 'POST';
+    const res = await fetch(path, {
+      method,
+      headers: post ? { 'Content-Type': 'application/json' } : {},
+      body: post ? JSON.stringify(body ?? {}) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401 && path !== '/api/login') show(false);
+    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+    return data;
+  }
+
+  // Runs an action from a button or field and reports the result in the note bar.
+  async function run(control, action, done) {
+    control.disabled = true;
+    try {
+      const result = await action();
+      if (done) note(typeof done === 'function' ? done(result) : done);
+    } catch (err) {
+      note(err.message, 'error');
+    } finally {
+      control.disabled = false;
+    }
+  }
+
+  function optionRow(option = {}) {
+    const field = (key, placeholder, max) =>
+      el('input', { name: key, value: option[key] ?? '', placeholder, maxLength: max, ariaLabel: placeholder });
+
+    const role = el('select', { name: 'roleId', ariaLabel: 'Role to give' },
+      el('option', { value: '', textContent: 'No role — reply only' }),
+      ...guilds.map((guild) =>
+        el('optgroup', { label: guild.name }, ...(guild.roles ?? []).map((r) =>
+          el('option', { value: r.id, textContent: r.assignable ? `@${r.name}` : `@${r.name} (bot can't assign yet)` }))),
+      ),
+    );
+    if (option.roleId && ![...role.options].some((o) => o.value === option.roleId)) {
+      role.append(el('option', { value: option.roleId, textContent: 'Role not found' }));
+    }
+    role.value = option.roleId ?? '';
+
+    const limit = el('input', {
+      name: 'limit', type: 'number', min: 1, step: 1, value: option.limit || '',
+      placeholder: 'Max people (blank = no limit)', ariaLabel: 'Maximum people who can have this role',
+    });
+    const syncLimit = () => (limit.disabled = !role.value);
+    role.onchange = syncLimit;
+    syncLimit();
+
+    const row = el(
+      'div',
+      { className: 'opt' },
+      field('label', 'Label', 100),
+      field('description', 'Description (optional)', 100),
+      field('reply', 'Private reply when picked', 2000),
+      role,
+      limit,
+      el('button', { type: 'button', textContent: 'Remove', onclick: () => { row.remove(); syncAdd(); } }),
+    );
+    return row;
+  }
+
+  // Servers the bot is in, with their channels and roles.
+  let guilds = [];
+
+  const syncAdd = () => ($('add').disabled = $('options').children.length >= 25);
+
+  // Saved dropdowns, and the id of the one in the editor (null while it is new and unsaved).
+  let menus = [];
+  let currentId = null;
+
+  function renderMenu(menu) {
+    currentId = menu.id ?? null;
+    try { localStorage.setItem('menu', currentId ?? ''); } catch {}
+    $('editing').textContent = currentId ? `Editing: ${menu.name}` : 'New dropdown (not saved yet)';
+    $('name').value = menu.name;
+    $('prompt').value = menu.prompt;
+    $('placeholder').value = menu.placeholder;
+    $('options').replaceChildren(...menu.options.map(optionRow));
+    syncAdd();
+  }
+
+  const blankMenu = () => ({ name: `Dropdown ${menus.length + 1}`, prompt: 'Choose one:', placeholder: 'Pick an option', options: [{}] });
+
+  const readMenu = () => ({
+    id: currentId,
+    name: $('name').value,
+    prompt: $('prompt').value,
+    placeholder: $('placeholder').value,
+    options: [...$('options').children].map((row) =>
+      Object.fromEntries([...row.querySelectorAll('[name]')].map((field) => [field.name, field.value]))),
+  });
+
+  // Saves a dropdown and puts the saved version in the list (and in the editor when `open`).
+  async function saveMenu(draft, open = true) {
+    const result = await api('POST', '/api/menu', draft);
+    const index = menus.findIndex((menu) => menu.id === result.menu.id);
+    if (index < 0) menus.push(result.menu);
+    else menus[index] = result.menu;
+    if (open) renderMenu(result.menu);
+    renderLibrary();
+    return result;
+  }
+
+  function renderLibrary() {
+    $('library').replaceChildren(
+      ...menus.map((menu) => {
+        const roles = menu.options.filter((o) => o.roleId).length;
+        const summary = `${menu.options.length} options${roles ? ` · ${roles} give a role` : ''}${menu.id === currentId ? ' · open in the editor' : ''}`;
+        const edit = el('button', { type: 'button', className: 'primary', textContent: 'Edit / send' });
+        edit.onclick = () => { renderMenu(menu); renderLibrary(); showTab('edit'); };
+        const copy = el('button', { type: 'button', textContent: 'Duplicate' });
+        copy.onclick = () => run(copy, () => saveMenu({ ...menu, id: null, name: `${menu.name} (copy)`.slice(0, 80) }, false), 'Dropdown duplicated');
+        const remove = el('button', { type: 'button', textContent: 'Delete' });
+        remove.onclick = () => {
+          if (!confirm(`Delete "${menu.name}"? The messages it was posted in will be deleted from Discord too.`)) return;
+          run(remove, async () => {
+            const { deleted } = await api('POST', '/api/menu/delete', { id: menu.id });
+            menus = menus.filter((other) => other.id !== menu.id);
+            if (currentId === menu.id) renderMenu(menus[0] ?? blankMenu());
+            renderLibrary();
+            return deleted;
+          }, (deleted) => `Dropdown deleted · removed ${deleted} messages from Discord`);
+        };
+        return el('div', { className: 'card' },
+          el('div', {}, el('strong', { textContent: menu.name }), el('span', { className: 'muted', textContent: summary })),
+          el('div', { className: 'actions' }, edit, copy, remove));
+      }),
+    );
+    if (!menus.length) $('library').append(el('p', { className: 'muted', textContent: 'No dropdowns saved yet.' }));
+  }
+
+  function render(data) {
+    $('tag').textContent = data.tag;
+    $('logout').hidden = data.open;
+    guilds = data.guilds;
+
+    let last = null;
+    try { last = localStorage.getItem('channel'); } catch {}
+    $('channel').replaceChildren(
+      ...data.guilds.map((guild) =>
+        el('optgroup', { label: guild.name }, ...guild.channels.map((c) =>
+          el('option', { value: c.id, textContent: `#${c.name}`, selected: c.id === last }))),
+      ),
+    );
+    const hasChannel = $('channel').options.length > 0;
+    $('no-guilds').hidden = hasChannel;
+    $('post').disabled = $('say').disabled = !hasChannel;
+
+    $('presence').replaceChildren(
+      ...Object.entries(data.presences).map(([value, label]) =>
+        el('option', { value, textContent: label, selected: data.presence === value })),
+    );
+
+    $('deposit-items').value = data.deposit.items.join('\n');
+    $('deposit-reply').value = data.deposit.reply;
+    $('retrieval-reply').value = data.deposit.retrievalReply ?? 'You have retrieved {quantity} × {item}.';
+    $('deposit-channel').replaceChildren(
+      el('option', { value: '', textContent: 'No channel — do not post receipts' }),
+      ...data.guilds.map((guild) =>
+        el('optgroup', { label: guild.name }, ...guild.channels.map((c) =>
+          el('option', { value: c.id, textContent: `#${c.name}`, selected: c.id === data.deposit.channelId }))),
+      ),
+    );
+
+    $('deposit-role').replaceChildren(
+      el('option', { value: '', textContent: 'Anyone in the server' }),
+      ...data.guilds.map((guild) =>
+        el('optgroup', { label: guild.name }, ...(guild.roles ?? []).map((r) =>
+          el('option', { value: r.id, textContent: `Only people with @${r.name}`, selected: r.id === data.deposit.roleId }))),
+      ),
+    );
+
+    const records = data.moderation;
+    $('records-channel').replaceChildren(
+      el('option', { value: '', textContent: 'No channel — do not notify' }),
+      ...data.guilds.map((guild) =>
+        el('optgroup', { label: guild.name }, ...guild.channels.map((c) =>
+          el('option', { value: c.id, textContent: `#${c.name}`, selected: c.id === records.recordsChannelId }))),
+      ),
+    );
+    $('records-roles').replaceChildren(
+      ...data.guilds.flatMap((guild) => (guild.roles ?? []).map((r) =>
+        el('label', { className: 'choice' },
+          el('input', { type: 'checkbox', value: r.id, checked: records.roleIds.includes(r.id) }),
+          el('div', {}, `@${r.name}`, el('span', { textContent: guild.name }))))),
+    );
+    if (!$('records-roles').children.length) {
+      $('records-roles').append(el('p', { className: 'muted', textContent: 'This server has no roles yet.' }));
+    }
+
+    renderDeposits(data);
+
+    menus = data.menus;
+    let lastMenu = null;
+    try { lastMenu = localStorage.getItem('menu'); } catch {}
+    renderMenu(menus.find((menu) => menu.id === lastMenu) ?? menus[0] ?? blankMenu());
+    renderLibrary();
+    show(true);
+  }
+
+  function showTab(name) {
+    for (const tab of document.querySelectorAll('.tabs button')) tab.ariaSelected = String(tab.dataset.tab === name);
+    for (const section of document.querySelectorAll('section[data-tab]')) section.hidden = section.dataset.tab !== name;
+    try { localStorage.setItem('tab', name); } catch {}
+  }
+  for (const tab of document.querySelectorAll('.tabs button')) tab.onclick = () => showTab(tab.dataset.tab);
+  let savedTab = null;
+  try { savedTab = localStorage.getItem('tab'); } catch {}
+  showTab(document.querySelector(`section[data-tab="${savedTab}"]`) ? savedTab : 'library');
+
+  // The Receipts and Totals tables.
+  function renderDeposits(data) {
+    // rows: arrays of cell text; numeric columns are right-aligned
+    const table = (id, headers, numeric, rows, empty) => {
+      const cell = (tag) => (value, index) =>
+        el(tag, { textContent: value, className: numeric.includes(index) ? 'num' : '' });
+      $(id).replaceChildren(
+        el('thead', {}, el('tr', {}, ...headers.map(cell('th')))),
+        el('tbody', {}, ...(rows.length
+          ? rows.map((row) => el('tr', {}, ...row.map(cell('td'))))
+          : [el('tr', {}, el('td', { colSpan: headers.length, textContent: empty }))])),
+      );
+    };
+    const number = (value) => value.toLocaleString();
+    table('receipts', ['Discord name', 'Type', 'Item', 'Amount', 'When'], [3],
+      data.receipts.map((r) => r.type === 'retrieval'
+        ? [r.name, 'Retrieval', r.item, `−${number(r.quantity)}`, new Date(r.at).toLocaleString()]
+        : [r.name, 'Deposit', r.item, `+${number(r.quantity)}`, new Date(r.at).toLocaleString()]),
+      'Nothing yet.');
+    $('receipts-summary').textContent = data.receipts.length
+      ? `${number(data.receipts.length)} most recent deposits and retrievals, newest first.`
+      : 'Each completed /deposit and /retrieve shows up here.';
+    table('totals', ['Item', 'Total amount', 'Deposited', 'Retrieved'], [1, 2, 3],
+      data.totals.map((t) => [t.item, number(t.quantity), number(t.deposited), number(t.retrieved)]),
+      'Nothing yet.');
+  }
+
+  // Keeps Receipts and Totals current without touching anything being edited on the other tabs.
+  setInterval(async () => {
+    if ($('panel').hidden || document.hidden) return;
+    try {
+      const res = await fetch('/api/state');
+      if (res.ok) renderDeposits(await res.json());
+      else if (res.status === 401) show(false);
+    } catch {}
+  }, 5000);
+
+  const load = () =>
+    api('GET', '/api/state').then(render, () => {}).catch((err) => note(`Couldn't show the panel: ${err.message}`, 'error'));
+
+  $('login-form').onsubmit = (event) => {
+    event.preventDefault();
+    run(event.submitter, async () => {
+      await api('POST', '/api/login', { password: $('password').value });
+      $('password').value = '';
+      await load();
+    });
+  };
+
+  $('logout').onclick = () => run($('logout'), async () => {
+    await api('POST', '/api/logout');
+    show(false);
+  });
+
+  $('channel').onchange = () => {
+    try { localStorage.setItem('channel', $('channel').value); } catch {}
+  };
+
+  const channelName = () => $('channel').selectedOptions[0]?.textContent ?? 'the channel';
+
+  $('post').onclick = () =>
+    run($('post'), async () => {
+      const { menu } = await saveMenu(readMenu());
+      await api('POST', '/api/post', { channelId: $('channel').value, menuId: menu.id, text: $('say-text').value });
+      $('say-text').value = '';
+      return menu;
+    }, (menu) => `"${menu.name}" saved and sent to ${channelName()}`);
+
+  $('save-deposit').onclick = () =>
+    run($('save-deposit'), async () => {
+      const { deposit } = await api('POST', '/api/deposit', {
+        items: $('deposit-items').value.split('\n'),
+        reply: $('deposit-reply').value,
+        retrievalReply: $('retrieval-reply').value,
+        channelId: $('deposit-channel').value,
+        roleId: $('deposit-role').value,
+      });
+      $('deposit-items').value = deposit.items.join('\n');
+      return deposit;
+    }, (deposit) => `Saved · ${deposit.items.length} items`);
+
+  $('save-records').onclick = () =>
+    run($('save-records'), () => api('POST', '/api/moderation', {
+      recordsChannelId: $('records-channel').value,
+      roleIds: [...$('records-roles').querySelectorAll('input:checked')].map((box) => box.value),
+    }), ({ moderation }) => moderation.roleIds.length
+      ? `Saved · ${moderation.roleIds.length} moderator roles`
+      : 'Saved · only people who can manage the server are moderators');
+
+  $('new-menu').onclick = () => {
+    renderMenu(blankMenu());
+    renderLibrary();
+    showTab('edit');
+    $('name').focus();
+  };
+
+  $('say').onclick = () =>
+    run($('say'), async () => {
+      await api('POST', '/api/say', { channelId: $('channel').value, text: $('say-text').value });
+      $('say-text').value = '';
+    }, `Message sent to ${channelName()}`);
+
+  $('presence').onchange = () =>
+    run($('presence'), () => api('POST', '/api/settings', { presence: $('presence').value }), 'Status updated');
+
+  $('add').onclick = () => {
+    const row = optionRow();
+    $('options').append(row);
+    row.querySelector('input').focus();
+    syncAdd();
+  };
+
+  $('save-menu').onclick = () =>
+    run($('save-menu'), () => saveMenu(readMenu()),
+      ({ menu, updated }) => `Saved "${menu.name}" · updated ${updated} posted copies`);
+
+  load();
+</script>
+</body>
+</html>
