@@ -113,8 +113,11 @@
 
   <section id="login" hidden>
     <h2>Sign in</h2>
-    <p class="muted">Enter the password you were given.</p>
+    <p class="muted">Enter your name and the password you were given.</p>
     <form id="login-form">
+      <label class="field">Your name
+        <input id="login-name" maxlength="60" autocomplete="name" required>
+      </label>
       <label class="field">Password
         <input id="password" type="password" autocomplete="current-password" required>
       </label>
@@ -129,6 +132,7 @@
       <button type="button" role="tab" data-tab="receipts">Receipts</button>
       <button type="button" role="tab" data-tab="totals">Totals</button>
       <button type="button" role="tab" data-tab="moderation">Moderation</button>
+      <button type="button" role="tab" data-tab="logins">Logging in</button>
       <button type="button" role="tab" data-tab="status">Bot status</button>
     </nav>
 
@@ -218,6 +222,13 @@
       <p class="muted">Updates by itself every few seconds.</p>
     </section>
 
+    <section data-tab="logins">
+      <h2>Logging in</h2>
+      <p class="muted" id="logins-summary"></p>
+      <div class="scroll"><table id="logins"></table></div>
+      <p class="muted">Updates by itself every few seconds.</p>
+    </section>
+
     <section data-tab="status">
       <h2>Bot status</h2>
       <label class="field">Shown next to the bot's name
@@ -268,6 +279,7 @@
   // Runs an action from a button or field and reports the result in the note bar.
   async function run(control, action, done) {
     control.disabled = true;
+    if ($('note').className === 'error') $('note').hidden = true; // an old error shouldn't linger over a new attempt
     try {
       const result = await action();
       if (done) note(typeof done === 'function' ? done(result) : done);
@@ -530,6 +542,17 @@
     table('totals', ['Item', 'Total amount', 'Deposited', 'Retrieved'], [1, 2, 3],
       data.totals.map((t) => [t.item, number(t.quantity), number(t.deposited), number(t.retrieved)]),
       'Nothing yet.');
+
+    // Sign-in attempts are only sent to people with the full password.
+    if (data.logins) {
+      const results = { admin: 'Signed in — full access', viewer: 'Signed in — receipts and totals only', wrong: 'Wrong password' };
+      table('logins', ['Name', 'Result', 'When (your time zone)'], [],
+        data.logins.map((entry) => [entry.name, results[entry.result] ?? entry.result, when(entry.at)]),
+        'Nobody has signed in yet.');
+      $('logins-summary').textContent = data.logins.length
+        ? `${number(data.logins.length)} most recent sign-in attempts, newest first. The name is whatever the person typed.`
+        : 'Each sign-in attempt on this website shows up here, with the name the person typed.';
+    }
   }
 
   // Keeps Receipts and Totals current without touching anything being edited on the other tabs.
@@ -557,7 +580,8 @@
   $('login-form').onsubmit = (event) => {
     event.preventDefault();
     run(event.submitter, async () => {
-      await api('POST', '/api/login', { password: $('password').value });
+      await api('POST', '/api/login', { name: $('login-name').value, password: $('password').value });
+      try { localStorage.setItem('name', $('login-name').value); } catch {}
       $('password').value = '';
       await load();
     });
@@ -630,6 +654,8 @@
   $('save-menu').onclick = () =>
     run($('save-menu'), () => saveMenu(readMenu()),
       ({ menu, updated }) => `Saved "${menu.name}" · updated ${updated} posted copies`);
+
+  try { $('login-name').value = localStorage.getItem('name') ?? ''; } catch {}
 
   load();
 </script>

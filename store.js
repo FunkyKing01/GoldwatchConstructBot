@@ -26,6 +26,8 @@ const defaults = {
   moderation: { roleIds: [], recordsChannelId: '' },
   // every completed /deposit or /retrieve: { at, userId, name, type, item, quantity }; no type means a deposit
   receipts: [],
+  // every sign-in attempt on the website: { at, name, result } where result is 'admin', 'viewer' or 'wrong'
+  logins: [],
   menus: [
     {
       id: newId(),

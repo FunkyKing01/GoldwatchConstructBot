@@ -65,6 +65,7 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
       moderation: state.moderation,
       receipts: state.receipts.slice(-1000).reverse(),
       totals: depositTotals(),
+      logins: state.logins.slice(-500).reverse(),
     }),
 
     'POST /api/deposit': ({ items, reply, retrievalReply, channelId, roleId, retrieveRoleIds }) => {
@@ -169,11 +170,16 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
       }
 
       if (route === 'POST /api/login') {
-        const { password: attempt } = await readJson(req);
+        const { name, password: attempt } = await readJson(req);
+        const who = String(name ?? '').trim().slice(0, 60);
+        if (!who) return json(400, { error: 'Enter your name first.' });
         const given = digest(attempt);
         const role = timingSafeEqual(given, secret)
           ? 'admin'
           : viewSecret && timingSafeEqual(given, viewSecret) ? 'viewer' : null;
+        // Every attempt is kept for the "Logging in" tab; the password itself is never stored.
+        state.logins = [...state.logins, { at: new Date().toISOString(), name: who, result: role ?? 'wrong' }].slice(-2000);
+        save();
         if (!role) {
           await sleep(1000); // slows down guessing
           return json(401, { error: 'Wrong password.' });
