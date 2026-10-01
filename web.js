@@ -63,7 +63,7 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
       totals: depositTotals(),
     }),
 
-    'POST /api/deposit': ({ items, reply, retrievalReply, channelId, roleId }) => {
+    'POST /api/deposit': ({ items, reply, retrievalReply, channelId, roleId, retrieveRoleIds }) => {
       const names = new Map();
       for (const item of Array.isArray(items) ? items : []) {
         const name = String(item ?? '').trim().slice(0, 100);
@@ -77,6 +77,7 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
         channelId: /^\d{17,20}$/.test(channelId) ? channelId : '',
         // only members with this role may use /deposit; empty means anyone
         roleId: /^\d{17,20}$/.test(roleId) ? roleId : '',
+        retrieveRoleIds: [...new Set(Array.isArray(retrieveRoleIds) ? retrieveRoleIds.filter(snowflake) : [])],
       };
       save();
       return { deposit: state.deposit };

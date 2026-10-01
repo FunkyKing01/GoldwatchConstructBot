@@ -173,7 +173,7 @@
 
     <section data-tab="moderation">
       <h2>Deposit and Retrieval</h2>
-      <p class="muted">People type <strong>/deposit</strong> in Discord, pick an item from this list and enter a quantity. Moderators type <strong>/retrieve</strong> the same way to take items out, which subtracts from the totals.</p>
+      <p class="muted">People type <strong>/deposit</strong> in Discord, pick an item from this list and enter a quantity. People with a retrieve role type <strong>/retrieve</strong> the same way to take items out, which subtracts from the totals.</p>
       <label class="field">Items, one per line
         <textarea id="deposit-items" style="min-height: 160px;"></textarea>
       </label>
@@ -189,11 +189,12 @@
       <label class="field">Who can use /deposit
         <select id="deposit-role"></select>
       </label>
-      <p class="muted">Who can use /retrieve is set under Moderators below.</p>
+      <p class="muted" style="margin-bottom: 4px;">Roles that can use /retrieve (people who can manage the server always can)</p>
+      <div id="retrieve-roles" style="margin-bottom: 12px;"></div>
       <button id="save-deposit" class="primary" type="button">Save deposit and retrieval setup</button>
 
       <h2 style="margin-top: 24px;">Moderators</h2>
-      <p class="muted">Moderators can use <strong>/retrieve</strong> (take items out) and <strong>/records</strong> (see every item and its total, shown only to them). People who can manage the server are always moderators.</p>
+      <p class="muted">Moderators can use <strong>/records</strong> to see every item and its total, shown only to them. People who can manage the server are always moderators.</p>
       <p class="muted" style="margin-bottom: 4px;">Moderator roles</p>
       <div id="records-roles" style="margin-bottom: 12px;"></div>
       <label class="field">Channel that is told when someone prints the records
@@ -447,15 +448,20 @@
           el('option', { value: c.id, textContent: `#${c.name}`, selected: c.id === records.recordsChannelId }))),
       ),
     );
-    $('records-roles').replaceChildren(
-      ...data.guilds.flatMap((guild) => (guild.roles ?? []).map((r) =>
-        el('label', { className: 'choice' },
-          el('input', { type: 'checkbox', value: r.id, checked: records.roleIds.includes(r.id) }),
-          el('div', {}, `@${r.name}`, el('span', { textContent: guild.name }))))),
-    );
-    if (!$('records-roles').children.length) {
-      $('records-roles').append(el('p', { className: 'muted', textContent: 'This server has no roles yet.' }));
-    }
+    // A tick list of every role, with the given ones ticked.
+    const roleBoxes = (id, ticked) => {
+      $(id).replaceChildren(
+        ...data.guilds.flatMap((guild) => (guild.roles ?? []).map((r) =>
+          el('label', { className: 'choice' },
+            el('input', { type: 'checkbox', value: r.id, checked: ticked.includes(r.id) }),
+            el('div', {}, `@${r.name}`, el('span', { textContent: guild.name }))))),
+      );
+      if (!$(id).children.length) {
+        $(id).append(el('p', { className: 'muted', textContent: 'This server has no roles yet.' }));
+      }
+    };
+    roleBoxes('records-roles', records.roleIds);
+    roleBoxes('retrieve-roles', data.deposit.retrieveRoleIds ?? []);
 
     renderDeposits(data);
 
@@ -557,6 +563,7 @@
         retrievalReply: $('retrieval-reply').value,
         channelId: $('deposit-channel').value,
         roleId: $('deposit-role').value,
+        retrieveRoleIds: [...$('retrieve-roles').querySelectorAll('input:checked')].map((box) => box.value),
       });
       $('deposit-items').value = deposit.items.join('\n');
       return deposit;

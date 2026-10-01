@@ -47,7 +47,7 @@ const commands = [
       option.setName('quantity').setDescription('How many').setRequired(true).setMinValue(1).setMaxValue(1000000)),
   new SlashCommandBuilder()
     .setName('retrieve')
-    .setDescription('Take items out; this subtracts from the totals (moderators only)')
+    .setDescription('Take items out; this subtracts from the totals')
     .setContexts(InteractionContextType.Guild)
     .addStringOption((option) =>
       option.setName('item').setDescription('What you are taking out').setRequired(true).setAutocomplete(true))
@@ -143,7 +143,7 @@ async function onItemSearch(i) {
 
 const fill = (template, values) => template.replace(/\{(user|item|quantity)\}/g, (_, key) => values[key]);
 
-/** Moderators hold one of the roles ticked on the Moderation tab; server managers always count. */
+/** Moderators (who can use /records) hold one of the moderator roles; server managers always count. */
 function isModerator(member) {
   return (
     member.permissions.has(PermissionFlagsBits.ManageGuild) ||
@@ -163,7 +163,17 @@ function moderatorsOnly(i) {
 async function onTransaction(i, type) {
   const retrieval = type === 'retrieval';
   if (retrieval) {
-    if (!isModerator(i.member)) return moderatorsOnly(i);
+    // /retrieve has its own role list; people who can manage the server can always retrieve.
+    const roleIds = state.deposit.retrieveRoleIds;
+    const allowed =
+      i.member.permissions.has(PermissionFlagsBits.ManageGuild) || roleIds.some((id) => i.member.roles.cache.has(id));
+    if (!allowed) {
+      const roles = roleIds.map((id) => `<@&${id}>`).join(', ');
+      return i.reply({
+        content: roles ? `You need one of these roles to retrieve: ${roles}` : 'Only server managers can retrieve.',
+        ...ephemeral,
+      });
+    }
   } else {
     const { roleId } = state.deposit;
     if (roleId && !i.member.roles.cache.has(roleId)) {

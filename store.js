@@ -18,8 +18,10 @@ const defaults = {
     retrievalReply: 'You have retrieved {quantity} × {item}.',
     channelId: '',
     roleId: '',
+    // roles that may use /retrieve; people who can manage the server always can
+    retrieveRoleIds: [],
   },
-  // /records and /retrieve are for moderators: members with one of these roles, plus anyone who can manage the server.
+  // /records is for moderators: members with one of these roles, plus anyone who can manage the server.
   // recordsChannelId is the channel told when someone uses /records.
   moderation: { roleIds: [], recordsChannelId: '' },
   // every completed /deposit or /retrieve: { at, userId, name, type, item, quantity }; no type means a deposit
@@ -55,6 +57,9 @@ if (saved.records && !saved.moderation) {
 delete saved.records;
 
 export const state = { ...defaults, ...saved };
+
+// /retrieve used to follow the moderator roles; keep those people able to retrieve.
+state.deposit.retrieveRoleIds ??= [...state.moderation.roleIds];
 
 export const save = () => writeFileSync(FILE, JSON.stringify(state, null, 2));
 
