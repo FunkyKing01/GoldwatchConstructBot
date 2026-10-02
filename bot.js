@@ -62,6 +62,10 @@ const commands = [
     .setName('records')
     .setDescription('See the total amount of every item (moderators only; only you see the answer)')
     .setContexts(InteractionContextType.Guild),
+  new SlashCommandBuilder()
+    .setName('commands')
+    .setDescription('List every command this bot has (only you see the answer)')
+    .setContexts(InteractionContextType.Guild),
 ];
 
 client.once(Events.ClientReady, async () => {
@@ -183,6 +187,7 @@ client.on(Events.InteractionCreate, async (i) => {
     if (i.isChatInputCommand() && i.commandName === 'deposit') return await onTransaction(i, 'deposit');
     if (i.isChatInputCommand() && i.commandName === 'retrieve') return await onTransaction(i, 'retrieval');
     if (i.isChatInputCommand() && i.commandName === 'records') return await onRecords(i);
+    if (i.isChatInputCommand() && i.commandName === 'commands') return await onCommands(i);
     if (i.isStringSelectMenu() && i.customId.startsWith('menu:pick')) return await onPick(i);
   } catch (err) {
     if (i.isAutocomplete()) return;
@@ -205,7 +210,7 @@ async function onItemSearch(i) {
 
 const fill = (template, values) => template.replace(/\{(user|item|quantity)\}/g, (_, key) => values[key]);
 
-/** Moderators (who can use /records) hold one of the moderator roles; server managers always count. */
+/** Moderators can use every command. They hold one of the moderator roles; server managers always count. */
 function isModerator(member) {
   return (
     member.permissions.has(PermissionFlagsBits.ManageGuild) ||
@@ -225,21 +230,21 @@ function moderatorsOnly(i) {
 async function onTransaction(i, type) {
   const retrieval = type === 'retrieval';
   if (retrieval) {
-    // /retrieve has its own role list; people who can manage the server can always retrieve.
+    // /retrieve has its own role list; moderators (and so server managers) can always retrieve.
     const roleIds = state.deposit.retrieveRoleIds;
-    const allowed =
-      i.member.permissions.has(PermissionFlagsBits.ManageGuild) || roleIds.some((id) => i.member.roles.cache.has(id));
-    if (!allowed) {
+    if (!isModerator(i.member) && !roleIds.some((id) => i.member.roles.cache.has(id))) {
       const roles = roleIds.map((id) => `<@&${id}>`).join(', ');
       return i.reply({
-        content: roles ? `You need one of these roles to retrieve: ${roles}` : 'Only server managers can retrieve.',
+        content: roles ? `You need one of these roles to retrieve: ${roles}` : 'Only moderators can retrieve.',
         ...ephemeral,
       });
     }
   } else {
-    const { roleId } = state.deposit;
-    if (roleId && !i.member.roles.cache.has(roleId)) {
-      return i.reply({ content: `You need the <@&${roleId}> role to deposit.`, ...ephemeral });
+    // No deposit roles ticked means anyone may deposit; moderators always can.
+    const { roleIds } = state.deposit;
+    if (roleIds.length && !isModerator(i.member) && !roleIds.some((id) => i.member.roles.cache.has(id))) {
+      const roles = roleIds.map((id) => `<@&${id}>`).join(', ');
+      return i.reply({ content: `You need one of these roles to deposit: ${roles}`, ...ephemeral });
     }
   }
 
@@ -281,6 +286,16 @@ async function onTransaction(i, type) {
       })
       .catch((err) => console.error(`Couldn't post the receipt: ${err.message}`));
   }
+}
+
+/** /commands: every command with what it needs and what it does, built from the list registered with Discord. */
+async function onCommands(i) {
+  const lines = commands.map((command) => {
+    const { name, description, options = [] } = command.toJSON();
+    const usage = [`/${name}`, ...options.map((option) => `<${option.name}>`)].join(' ');
+    return `• **${usage}** — ${description}`;
+  });
+  await i.reply({ content: `**Commands**\n${lines.join('\n')}`, ...ephemeral });
 }
 
 async function onRecords(i) {

@@ -72,7 +72,7 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
       ledger: bot.ledger(),
     }),
 
-    'POST /api/deposit': ({ items, reply, retrievalReply, channelId, roleId, retrieveRoleIds }) => {
+    'POST /api/deposit': ({ items, reply, retrievalReply, channelId, roleIds, retrieveRoleIds }) => {
       const names = new Map();
       for (const item of Array.isArray(items) ? items : []) {
         const name = String(item ?? '').trim().slice(0, 100);
@@ -84,8 +84,8 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
         retrievalReply: String(retrievalReply ?? '').trim().slice(0, 1500),
         // deposits and retrievals are both posted here
         channelId: /^\d{17,20}$/.test(channelId) ? channelId : '',
-        // only members with this role may use /deposit; empty means anyone
-        roleId: /^\d{17,20}$/.test(roleId) ? roleId : '',
+        // members need one of these roles to use /deposit; none listed means anyone
+        roleIds: [...new Set(Array.isArray(roleIds) ? roleIds.filter(snowflake) : [])],
         retrieveRoleIds: [...new Set(Array.isArray(retrieveRoleIds) ? retrieveRoleIds.filter(snowflake) : [])],
       };
       save();

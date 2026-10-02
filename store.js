@@ -17,7 +17,8 @@ const defaults = {
     reply: 'Thank you! Your deposit of {quantity} × {item} went through.',
     retrievalReply: 'You have retrieved {quantity} × {item}.',
     channelId: '',
-    roleId: '',
+    // roles that may use /deposit; none listed means anyone. Moderators always can.
+    roleIds: [],
     // roles that may use /retrieve; people who can manage the server always can
     retrieveRoleIds: [],
   },
@@ -62,6 +63,10 @@ export const state = { ...defaults, ...saved };
 
 // /retrieve used to follow the moderator roles; keep those people able to retrieve.
 state.deposit.retrieveRoleIds ??= [...state.moderation.roleIds];
+
+// /deposit used to allow a single role (roleId); it is now a list.
+state.deposit.roleIds ??= state.deposit.roleId ? [state.deposit.roleId] : [];
+delete state.deposit.roleId;
 
 export const save = () => writeFileSync(FILE, JSON.stringify(state, null, 2));
 
