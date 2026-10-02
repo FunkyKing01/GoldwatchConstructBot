@@ -196,7 +196,7 @@
       <label class="field">Message the depositor sees. You can use {user}, {item} and {quantity}.
         <textarea id="deposit-reply" maxlength="1500"></textarea>
       </label>
-      <label class="field">Message the person retrieving sees. You can use {user}, {item} and {quantity}.
+      <label class="field">Message the person retrieving sees. You can use {user}, {item}, {quantity} and {reason}.
         <textarea id="retrieval-reply" maxlength="1500"></textarea>
       </label>
       <label class="field">Channel that deposit and retrieval receipts are posted in
@@ -556,10 +556,10 @@
     const when = (at) => new Date(at).toLocaleString([], {
       year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
     });
-    table('receipts', ['Discord name', 'Type', 'Item', 'Amount', 'When (your time zone)'], [3],
+    table('receipts', ['Discord name', 'Type', 'Item', 'Amount', 'Reason', 'When (your time zone)'], [3],
       data.receipts.map((r) => r.type === 'retrieval'
-        ? [r.name, 'Retrieval', r.item, `−${number(r.quantity)}`, when(r.at)]
-        : [r.name, 'Deposit', r.item, `+${number(r.quantity)}`, when(r.at)]),
+        ? [r.name, 'Retrieval', r.item, `−${number(r.quantity)}`, r.reason || '—', when(r.at)]
+        : [r.name, 'Deposit', r.item, `+${number(r.quantity)}`, '', when(r.at)]),
       'Nothing yet.');
     $('receipts-summary').textContent = data.receipts.length
       ? `${number(data.receipts.length)} most recent deposits and retrievals, newest first. Time & date is adjusted to those viewing this currently.`

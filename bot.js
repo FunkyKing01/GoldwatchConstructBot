@@ -57,7 +57,9 @@ const commands = [
     .addStringOption((option) =>
       option.setName('item').setDescription('What you are taking out').setRequired(true).setAutocomplete(true))
     .addIntegerOption((option) =>
-      option.setName('quantity').setDescription('How many').setRequired(true).setMinValue(1).setMaxValue(1000000)),
+      option.setName('quantity').setDescription('How many').setRequired(true).setMinValue(1).setMaxValue(1000000))
+    .addStringOption((option) =>
+      option.setName('reason').setDescription('Why you are taking it out').setRequired(true).setMaxLength(200)),
   new SlashCommandBuilder()
     .setName('records')
     .setDescription('See the total amount of every item (moderators only; only you see the answer)')
@@ -208,7 +210,7 @@ async function onItemSearch(i) {
   await i.respond(matches.slice(0, 25).map((item) => ({ name: item, value: item })));
 }
 
-const fill = (template, values) => template.replace(/\{(user|item|quantity)\}/g, (_, key) => values[key]);
+const fill = (template, values) => template.replace(/\{(user|item|quantity|reason)\}/g, (_, key) => values[key]);
 
 /** Moderators can use every command. They hold one of the moderator roles; server managers always count. */
 function isModerator(member) {
@@ -267,13 +269,17 @@ async function onTransaction(i, type) {
     }
   }
 
+  // A retrieval must say why; the reason is kept on the receipt.
+  const reason = retrieval ? i.options.getString('reason', true).trim().replace(/\s+/g, ' ') : '';
+  if (retrieval && !reason) return i.reply({ content: 'Please give a reason for the retrieval.', ...ephemeral });
+
   const name = i.member?.displayName ?? i.user.username;
   const at = new Date();
-  state.receipts.push({ at: at.toISOString(), userId: i.user.id, name, type, item, quantity });
+  state.receipts.push({ at: at.toISOString(), userId: i.user.id, name, type, item, quantity, ...(retrieval && { reason }) });
   save();
 
   const template = retrieval ? state.deposit.retrievalReply : state.deposit.reply;
-  const reply = fill(template ?? '', { user: name, item, quantity }) || (retrieval ? 'Retrieved.' : 'Thank you!');
+  const reply = fill(template ?? '', { user: name, item, quantity, reason }) || (retrieval ? 'Retrieved.' : 'Thank you!');
   await i.reply({ content: reply, ...ephemeral });
 
   const channel = client.channels.cache.get(state.deposit.channelId);
@@ -281,7 +287,9 @@ async function onTransaction(i, type) {
     await channel
       .send({
         // <t:…:f> is shown by Discord as a date and time in each reader's own time zone
-        content: `**${name}** (${i.user}) ${retrieval ? 'retrieved' : 'deposited'} **${quantity} × ${item}** on <t:${Math.floor(at / 1000)}:f>`,
+        content:
+          `**${name}** (${i.user}) ${retrieval ? 'retrieved' : 'deposited'} **${quantity} × ${item}** on <t:${Math.floor(at / 1000)}:f>` +
+          (retrieval ? `\nReason: ${reason}` : ''),
         allowedMentions: { parse: [] },
       })
       .catch((err) => console.error(`Couldn't post the receipt: ${err.message}`));
