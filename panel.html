@@ -607,9 +607,17 @@
     } catch {}
   }, 5000);
 
+  // Clears the "restarting or offline" message once the bot answers again.
+  let waitingForBot = false;
+  function backOnline() {
+    if (waitingForBot) $('note').hidden = true;
+    waitingForBot = false;
+  }
+
   // If the page can't draw what the bot sent, say exactly where it failed and what arrived, so it can be fixed.
   const load = () =>
     api('GET', '/api/state').then((data) => {
+      backOnline();
       try {
         render(data);
       } catch (err) {
@@ -619,10 +627,11 @@
       }
     }, (err) => {
       // Being signed out is normal and shows the sign-in form; anything else is worth reporting.
-      if (err.message === 'Sign in first.') return;
+      if (err.message === 'Sign in first.') return backOnline();
       // The host answers with its own "web server offline" page while the bot is restarting: wait and try again.
       if (err.message.startsWith('Unexpected reply') || err instanceof TypeError) {
         note('The bot is restarting or offline. Trying again in a few seconds…', 'error');
+        waitingForBot = true;
         setTimeout(load, 5000);
         return;
       }
