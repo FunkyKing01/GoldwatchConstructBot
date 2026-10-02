@@ -34,6 +34,11 @@ if (!DISCORD_TOKEN) {
 const hostedPort = Number(process.env.SERVER_PORT || process.env.PORT) || 0;
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+
+// One failed action must not take the whole bot (and its website) down: log it and keep running.
+client.on(Events.Error, (err) => console.error('Discord client error:', err));
+process.on('unhandledRejection', (err) => console.error('Unhandled error:', err));
+process.on('uncaughtException', (err) => console.error('Unhandled error:', err));
 const ephemeral = { flags: MessageFlags.Ephemeral };
 
 const commands = [
@@ -400,4 +405,7 @@ async function deletePosted(menuId) {
   return deleted;
 }
 
-client.login(DISCORD_TOKEN);
+client.login(DISCORD_TOKEN).catch((err) => {
+  console.error(`Couldn't log in to Discord: ${err.message}`);
+  process.exit(1);
+});

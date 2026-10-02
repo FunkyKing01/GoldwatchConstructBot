@@ -149,8 +149,10 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
 
   const server = createServer(async (req, res) => {
     const json = (status, body, headers = {}) => {
+      // Build the text first: if that fails, nothing has been sent yet and the error can still be reported.
+      const text = JSON.stringify(body);
       res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers });
-      res.end(JSON.stringify(body));
+      res.end(text);
     };
 
     try {
@@ -230,6 +232,7 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
       return json(200, (await api[route](body)) ?? { ok: true });
     } catch (err) {
       if (!err.status) console.error(err);
+      if (res.headersSent) return res.end();
       return json(err.status ?? 500, { error: err.message });
     }
   });
