@@ -1,11 +1,13 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { depositTotals, findMenu, newId, rememberPost, save, state } from './store.js';
 import { PRESENCES, cleanMenu, menuMessage } from './ui.js';
 
 const PAGE = new URL('./panel.html', import.meta.url);
+// The picture shown under the sign-in form. Replace the file to change it; delete it to show none.
+const SIGNIN_IMAGE = new URL('./signin-image.png', import.meta.url);
 
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 const digest = (value) => createHash('sha256').update(String(value)).digest();
@@ -38,6 +40,7 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
   const page = source.replace('__BUILD__', build);
   // With no password the panel is open, which is only allowed for this computer (see the Host check below).
   const open = !password;
+  const signinImage = existsSync(SIGNIN_IMAGE) ? readFileSync(SIGNIN_IMAGE) : null;
   const secret = digest(password);
   // An optional second password that only lets people look at Receipts and Totals.
   const viewSecret = viewPassword ? digest(viewPassword) : null;
@@ -170,6 +173,12 @@ export function startPanel(bot, { host = '127.0.0.1', port = 3000, password, vie
           'X-Frame-Options': 'DENY',
         });
         return res.end(page);
+      }
+
+      if (route === 'GET /signin-image.png') {
+        if (!signinImage) return json(404, { error: 'Not found.' });
+        res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=3600' });
+        return res.end(signinImage);
       }
 
       if (route === 'POST /api/login') {
